@@ -1,0 +1,6 @@
+config,true_refusals,false_refusals
+strong_plain,10,13
+cheap_plain,10,16
+cheap_rag,10,2
+cheap_agent,10,1
+mid_rag,10,4
