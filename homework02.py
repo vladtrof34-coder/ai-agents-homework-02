@@ -24,7 +24,7 @@ load_dotenv(ROOT / '.env')
 MODELS = {'cheap': 'openai/gpt-4o-mini', 'mid': 'anthropic/claude-haiku-4.5', 'strong': 'anthropic/claude-sonnet-4.6'}
 EMBED_MODEL, DIM = 'openai/text-embedding-3-small', 512
 COLLECTION, MEMORY_COLLECTION = 'hw02_tkachuk_index', 'hw02_tkachuk_memory'
-LOCK = threading.Lock()
+LOCK = threading.RLock()
 LOCAL = threading.local()
 LEDGER = []
 BUDGET = float(os.getenv('RUN_BUDGET_USD', '2'))
@@ -39,6 +39,18 @@ def write_json(path, value):
     Path(path).write_text(json.dumps(value, ensure_ascii=False, indent=2))
 
 
+RESULT_FILE = OUT / 'results.json'
+RESULTS = json.loads(RESULT_FILE.read_text()) if RESULT_FILE.exists() else {}
+
+
+def save_result(name, value):
+    with LOCK:
+        RESULTS[name] = value
+        temporary = RESULT_FILE.with_suffix('.tmp')
+        temporary.write_text(json.dumps(RESULTS, ensure_ascii=False))
+        temporary.replace(RESULT_FILE)
+
+
 def record(model, usage, tag):
     cost = usage.get('cost')
     if cost is None:
@@ -48,8 +60,8 @@ def record(model, usage, tag):
     LOCAL.spent = getattr(LOCAL, 'spent', 0.0) + row['cost']
     with LOCK:
         LEDGER.append(row)
-        with (OUT / 'usage.jsonl').open('a') as f:
-            f.write(json.dumps(row) + '\n')
+        RESULTS.setdefault('usage', []).append(row)
+        save_result('usage', RESULTS['usage'])
 
 
 def request(endpoint, body, tag):
@@ -289,8 +301,7 @@ def correct(task, answer):
 
 
 def evaluate(fn, tasks, config, model, workers=4):
-    path = OUT / f'{config}.jsonl'
-    existing = {r['id']: r for r in read_jsonl(path)} if path.exists() else {}
+    existing = {r['id']: r for r in RESULTS.get(config, [])}
     def one(task):
         if task['id'] in existing:
             return existing[task['id']]
@@ -302,8 +313,8 @@ def evaluate(fn, tasks, config, model, workers=4):
                'found': any(is_gold(h, task) for h in out['hits']),
                'cost': getattr(LOCAL, 'spent', 0.0) - before, **out}
         with LOCK:
-            with path.open('a') as f:
-                f.write(json.dumps(row, ensure_ascii=False) + '\n')
+            RESULTS.setdefault(config, []).append(row)
+            save_result(config, RESULTS[config])
         return row
     with ThreadPoolExecutor(workers) as pool:
         return pd.DataFrame(list(pool.map(one, tasks)))
