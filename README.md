@@ -6,10 +6,9 @@ RAG и память по книге Ткачука «Математика — а
 
 ```bash
 pip install -r requirements.txt
-python -m unittest -v
 ```
 
-Результаты уже есть в `homework02.ipynb`. При `RECOMPUTE = False` ключ и база не нужны.
+Открыть `homework02.ipynb` из папки работы и запускать сверху вниз. В нём весь код, тесты и результаты. При `RECOMPUTE = False` ключ и база не нужны.
 
 Для пересчёта:
 
@@ -17,14 +16,11 @@ python -m unittest -v
 cp .env.example .env
 # Записать OPENROUTER_API_KEY в .env
 docker compose --profile ui up -d
-python run_experiments.py retrieval
-python run_experiments.py answers
-python run_experiments.py memory
 ```
 
-Ответы считаются по очереди. Сохранённые ответы пропускаются. Для нового замера перенести папку `results` и создать пустую; кэш оставить. Лимит расходов в `.env` действует на один запуск.
+В ноутбуке поставить `RECOMPUTE = True` и запустить ячейки сверху вниз. Ответы считаются по очереди. Сохранённые ответы пропускаются. Для нового замера перенести папку `results` и создать пустую; кэш оставить. Лимит расходов в `.env` действует на один запуск.
 
-Основной код — `homework02.py`, эксперименты — `run_experiments.py`, данные — `data`, результаты — `results/results.json`. Ключ и личная память не входят в git.
+Данные — `data`, результаты — `results/results.json`. Ключ и личная память не входят в git.
 
 ## Данные и поиск
 
